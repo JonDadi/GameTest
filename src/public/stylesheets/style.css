@@ -1,0 +1,21 @@
+body {
+  background-color: pink;
+  padding: 50px;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+
+.canvasWrapper canvas {
+  border: 1px solid black;
+}
+
+a {
+  color: #00B7FF;
+}
+
+.announcement {
+  background-color: red;
+}
+
+#word {
+  color: green;
+}

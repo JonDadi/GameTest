@@ -1,0 +1,15 @@
+{
+  "extends": "airbnb",
+  "plugins": [],
+  "rules": {
+    "import/no-extraneous-dependencies": ["error", {"devDependencies": ["**/*.test.js", "**/*.spec.js"]}],
+    "no-plusplus": ["error", { "allowForLoopAfterthoughts": true }],
+    "max-len": ["error", 80],
+    "no-unused-vars": ["error", { "args": "none" }],
+    "new-cap": ["error", { "capIsNew": false }]
+  },
+  "env": {
+    "browser": true,
+    "mocha": true
+  }
+}
