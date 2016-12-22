@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const Q = require('q');
 
 //used in local-signup strategy
-exports.localReg = function (username, password) {
+exports.localReg = function (username, password, email) {
   var deferred = Q.defer();
 
   // returns an object if a user is found. Trying to access index 0 will tell us
@@ -19,13 +19,14 @@ exports.localReg = function (username, password) {
 
       console.log("CREATING USER: " + username);
 
-      let user = { "username": username, "password": password };
+      let user = { "username": username, "password": password, "email": email};
+      const now = getDateTime();
 
-      db.insertUser(username, password)
+      db.insertUser(username, password, email, now)
       .then(() => {
         deferred.resolve(user);
       });
-    } // end 'else'
+    } // end 'else' clause
   });
   return deferred.promise;
 };
@@ -58,4 +59,32 @@ exports.localAuth = (username, password) => {
     });
 
   return deferred.promise;
+}
+
+function getDateTime() {
+  const currentdate = new Date();
+
+  let day = currentdate.getDate();
+  let month = currentdate.getMonth()+1;
+  let year = currentdate.getFullYear();
+  let hours = currentdate.getHours();
+  let minutes = currentdate.getMinutes();
+  let seconds = currentdate.getSeconds();
+
+  // Add zero to segment if it is only 1 character, f.ex. 1 second should be 01 second.
+  // Having 'year' in the array is redundant, but I'm keeping it there for clarity's sake.
+  let arr = [day, month, year, hours, minutes, seconds];
+  for (var i = 0; i < arr.length; i++) {
+    if(arr[i].toString().length === 1) {
+      arr[i] = '0' + arr[i];
+    }
+  }
+
+  const datetime = arr[0] + "-"
+                + arr[1] + "-"
+                + arr[2] + " "
+                + arr[3] + ":"
+                + arr[4] + ":"
+                + arr[5];
+  return datetime;
 }

@@ -10,11 +10,14 @@ function createTables() {
   // that would have been the most straightforward name.
   // This table should probably have a "matches" array attribute so we can look up
   // the matchIDs of each player in order to keep track of score between two
-  // players, f.ex..
+  // players, f.ex.. Or maybe it's enough to have the 'match' table to cover who's
+  // involved in which match?
   db.none(`CREATE TABLE IF NOT EXISTS player(
             id             SERIAL PRIMARY KEY,
             username       varchar(32),
-            password       varchar(64)
+            password       varchar(64),
+            email          varchar(40),
+            signupdate     varchar(19)
   )`)
   .then(() => {
   })
@@ -53,8 +56,8 @@ function createTables() {
 
 // Inserts a new user.
 // returns a promise
-function insertUser(user, pass) {
-  return db.none(`INSERT INTO player(username, password) VALUES($1, $2)`, [user, pass]);
+function insertUser(user, pass, e, date) {
+  return db.none(`INSERT INTO player(username, password, email, signupdate) VALUES($1, $2, $3, $4)`, [user, pass, e, date]);
 }
 
 // Finds a single user by username
