@@ -1,0 +1,21 @@
+extends layout
+
+block content
+  if user
+    div.jumbotron
+      h1 User Authentication
+      p Below is your profile info
+
+    div.panel.panel-default
+      div.panel-heading
+        h3.panel-title Profile info
+      div.panel-body
+        p Username: #{user.username}
+  else
+    div.jumbotron
+      h1 User Authentication
+      p Sign in and view your Profile
+      p
+        a(href='/signin' role='button').btn.btn-primary.btn-lg
+          span.glyphicon.glyphicon-user
+          |  Sign in!

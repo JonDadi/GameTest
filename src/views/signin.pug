@@ -1,0 +1,32 @@
+extends layout
+
+block content
+  div.jumbotron
+    h1 Sign in
+    p.text-uppercase Welcome! Please go ahead and sign-in :)
+    p
+      a(data-toggle='collapse' href='#local' role='button').btn.btn-warning.btn-lg.text-uppercase
+        span.glyphicon.glyphicon-user
+        |  Sign in
+    div.collapse#local
+      a(data-toggle='collapse' href='#local-sign-in' role='button').btn.btn-default.btn-md I already have an account
+      a(data-toggle='collapse' href='#local-reg' role='button').btn.btn-default.btn-md I need to make an account
+
+    form.collapse#local-sign-in(action='/login' method='post')
+      div
+        label(for='username') Username:
+        input.form-control(type='text' name='username')
+      div
+        label(for='password') Password:
+        input.form-control(type='password' name='password')
+      div
+        input(type='submit' value='Log In').btn.btn-primary.btn-sm
+    form.collapse#local-reg(action='/local-reg' method='post')
+      div
+        label(for='username') Username:
+        input.form-control(type='text' name='username')
+      div
+        label(for='password') Password:
+        input.form-control(type='password' name='password')
+      div
+        input(type='submit' value='Register').btn.btn-primary.btn-sm

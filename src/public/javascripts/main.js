@@ -11,7 +11,6 @@ const Main = (() => {
     const canvasBoard = document.getElementById('drawBoard');
     const drawBoard = canvasBoard.getContext('2d');
 
-
     let userName = '';
     let info = {};
     let currX = 25;
@@ -61,11 +60,13 @@ const Main = (() => {
       currY = e.clientY - canvasBoard.offsetTop;
       drawing = true;
     })
+
     canvasBoard.addEventListener("mouseup", e => {
       drawing = false;
       socket.emit('lines', lineArray);
     })
 
+    // changing of username
     btnUserName.addEventListener('click', e => {
       info.userName = userNameBox.value;
       socket.emit('getInfo', info);
