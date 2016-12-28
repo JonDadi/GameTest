@@ -10,12 +10,19 @@ const session = require('express-session');
 const passport = require('passport');
 const LocalStrategy = require('passport-local');
 const db = require('./dbConnect');
+const game = require('./game');
 
 const app = express();
 const server = http.createServer(app);
 const io = require('socket.io').listen(server);
 
 const funct = require('./functions.js'); //funct file contains our helper functions for our Passport and database work
+
+// This is just a placeholder variable when testing the game,
+// this variable will be an instance of the game prototype.  In the future it might be
+// best to have all games stored in an array of game prototype object, by doing that
+// we can have more than 2 users battling each other at the same time.
+let game1 = {};
 
 // Passport session setup.
 passport.serializeUser((user, done) => {
@@ -167,61 +174,55 @@ io.on('connection', socket => {
   connectedPlayers[socket.id].socket = socket;
   // Assign a temp username if the player does not provide one.
   connectedPlayers[socket.id].userName = 'Anon'+numPlayers;
-  //Ask the client to send us info
-//  socket.emit('sendInfo');
-  //The response from the client with the info.
-  socket.on('getInfo', info => {
-    const oldName = connectedPlayers[socket.id].userName;
-    connectedPlayers[socket.id].userName = info.userName;
-    io.emit('announcement', oldName+' just changed his userName to '+info.userName);
-  });
-
-  // Increment the player counter because a new player just connected.
+  // Assign a playerID to each user.  This will be replaced with session id in the future.
+  // We would need to load that from a cookie.
+  connectedPlayers[socket.id].userID = numPlayers;
+    // Increment the player counter because a new player just connected.
   numPlayers++;
 
-  if(numPlayers === 1){
-    //Announce that the game is waiting on new players
-    io.emit('announcement', 'Waiting for more players...')
-  }
   // If the number of players is 2 then we can start a new game.
-  else if(numPlayers === 2){
+  if(numPlayers === 2){
+
     // Tell clients to prep for a new game
     io.emit('newGame');
+    // Create a new game that the 2 connected players will compete in.  Currently it's only
+    // possible to have 2 players play at once.  An array of games will be better in the future.
+    game1 = new game.Game();
+    // Tell the second player that it is his turn.  (Maybe change to random player later)
+    socket.emit('yourTurn');
     // Announce the game start.
     io.emit('announcement', 'We got 2 players, a game will start now! First player is: '+
             connectedPlayers[socket.id].userName);
     // Pick a socket that gets to draw first.  It should pick a random socket
     // but currently it picks the second socket to join the game.
-    socket.emit('yourTurn', wordToGuess);
+  }
 
-  }
-  else{
-    // If the players are more than 2, then just announce when
-    // a new player has connected
-    io.emit('announcement', connectedPlayers[socket.id].userName+' just joined the game!');
-  }
+  socket.on('sendTurn', move => {
+    console.log(move.column);
+
+    // The variable isWon keeps track of if a player has won yet.  If this turns true then
+    // the socket sending the new move is the winner.
+    let isWon = game1.makeMove(move.row, move.column, connectedPlayers[socket.id].userID);
+    if (isWon) {
+      // Let the players know who won,  the players will then clear the board and start a new game
+      // when they recieve these messages.
+      // (socket.emit broadcasts to the user that played the last move)
+      // (socket.broadcast.emit) broadcasts to the losing player.
+      socket.emit('youWon');
+      io.emit('announcement', connectedPlayers[socket.id].userName + ' just won!')
+      socket.broadcast.emit('youLost');
+    }
+    else {
+      // No one won so the game continues.
+      socket.broadcast.emit('enemyTurn', move.column);
+      socket.broadcast.emit('yourTurn');
+    }
+  });
 
   // Someone send a new message
   socket.on('userMsg', (msg) => {
     // Broadcast the message to all other clients
     io.emit('newMsg', connectedPlayers[socket.id].userName+': '+msg);
-    // Check if message is the correct answer
-    if(msg.toLowerCase() === wordToGuess){
-      // Announce the winner
-      io.emit('announcement', 'Correct answer!, '+connectedPlayers[socket.id].userName+' \
-              guessed the correct answer and gets to draw!');
-      // Tell all clients to start a new game
-      io.emit('newGame');
-      // Send the socket that guessed correct a new word to draw.
-      socket.emit('yourTurn', wordToGuess);
-    }
-
-  })
-
-  // Get the lines from the drawing client
-  socket.on('lines', lines => {
-    // Send the lines to all other clients
-    socket.broadcast.emit('drawLine', lines);
   })
 
   // Do something when a client disconnects
@@ -230,11 +231,6 @@ io.on('connection', socket => {
     numPlayers--;
     // Announce other players that a player has disconnected
     io.emit('announcement', connectedPlayers[socket.id].userName+' disconnected.');
-    if(numPlayers === 1){
-      // If a player disconnects leaving only one behind then the game will stop
-      // and the player is notified that the game needs more players.
-      io.emit('announcement', 'Waiting for more players...');
-    }
   })
 })
 

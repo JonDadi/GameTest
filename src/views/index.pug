@@ -2,11 +2,9 @@ extends layout
 
 block content
   h1= title
-  input(id="userName", type="text")
-  button(id="btnUserName" type="button") Save!
   p#word
   div#msgBox
   input(id="msg", type="text", name="userInput")
   button(id="btnSubmit" type="button") Send!
-  div.canvasWrapper
-    canvas(id="drawBoard", height="600", width="600")
+  div#canvasWrapper
+  
