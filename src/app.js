@@ -11,10 +11,13 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local');
 const db = require('./dbConnect');
 const game = require('./game');
+const sharedsession = require("express-socket.io-session");
+
 
 const app = express();
 const server = http.createServer(app);
 const io = require('socket.io').listen(server);
+
 
 const funct = require('./functions.js'); //funct file contains our helper functions for our Passport and database work
 
@@ -34,6 +37,9 @@ passport.deserializeUser((user, done) => {
   console.log("deserializing " + user);
   done(null, user);
 });
+
+io.use(sharedsession(session({secret: 'supernova', saveUninitialized: true, resave: true})));
+
 
 //app.use(logger('combined'));
 app.use(cookieParser());
@@ -75,6 +81,8 @@ app.get('/', (req, res) => {
 // Unauthenticated users are not allowed to access the index page
 app.get('/index', (req, res) => {
   if (req.isAuthenticated()) {
+    res.cookie('userName', req.user.username, { maxAge: 900000, httpOnly: true });
+    res.cookie('sessionID', req.sessionID, { maxAge: 900000, httpOnly: true });
     res.render('index', {user: req.user});
   } else {
     req.session.error = 'Please sign in!';
@@ -166,14 +174,22 @@ const wordToGuess = 'penus';
 let numPlayers = 0;
 let activePlayer = '0';
 
+
 // When a client connects to our server.
 io.on('connection', socket => {
   console.log('user connected!');
+
+  // Get the cookies from this socket.
+  const cookie=socket.handshake.cookies;
+
+
   connectedPlayers[socket.id] = {};
   // We can now use the socket in this array to send to this client.
   connectedPlayers[socket.id].socket = socket;
-  // Assign a temp username if the player does not provide one.
-  connectedPlayers[socket.id].userName = 'Anon'+numPlayers;
+  // Get the username from a cookie.
+  connectedPlayers[socket.id].userName = cookie.userName;
+  // Get the sessionID from a cookie.
+  connectedPlayers[socket.id].sessionID = cookie.sessionID;
   // Assign a playerID to each user.  This will be replaced with session id in the future.
   // We would need to load that from a cookie.
   connectedPlayers[socket.id].userID = numPlayers;
@@ -228,6 +244,12 @@ io.on('connection', socket => {
   // Do something when a client disconnects
   socket.on('disconnect', () => {
     console.log('A user disconnected');
+
+    // save the userinfo to database.
+
+
+
+
     numPlayers--;
     // Announce other players that a player has disconnected
     io.emit('announcement', connectedPlayers[socket.id].userName+' disconnected.');
