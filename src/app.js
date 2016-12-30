@@ -75,7 +75,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 server.listen(process.env.PORT || 3000);
 
 app.get('/', (req, res) => {
-  res.render('home', {user: req.user});
+
+  // Check if the sessionID stored in cookie is the same as the current
+  // sessionID,  if so let the user in without a log in prompt.
+  if(req.cookies.sessionID === req.sessionID){
+    res.render('index', {user: req.user});
+  }
+  else {
+    res.render('home', {user: req.user});
+  }
 });
 
 // Unauthenticated users are not allowed to access the index page
@@ -116,6 +124,8 @@ app.post('/login', passport.authenticate('local-signin', {
 app.get('/logout', (req, res) => {
   const name = req.user.username;
   console.log("LOGGIN OUT " + req.user.username)
+  // Clear the sessionID cookie so the user can actually logout.
+  res.clearCookie('sessionID');
   req.logout();
   res.redirect('/');
   req.session.notice = "You have successfully been logged out " + name + "!";
@@ -170,10 +180,45 @@ passport.use('local-signin', new LocalStrategy(
 
 /* GAME VARIABLES */
 const connectedPlayers = [];
+const playersInQueue = [];
+const activeGames = [];
 const wordToGuess = 'penus';
+let gameID = 0;
 let numPlayers = 0;
 let activePlayer = '0';
 
+// Check if a player is in the connectedPlayers array.
+function isUserInPlayers( userName ){
+  for(socketId in connectedPlayers){
+    if(connectedPlayers[socketId].userName === userName) return socketId;
+  }
+  return false;
+}
+
+// Updates the connectedPlayers array if a logged in user
+// refreshes the page and gets a new socket.
+function updateUserSocket(userName, newSocket){
+  let oldSocketId;
+  // Find the old socketId
+  for( socketId in connectedPlayers ){
+    if(connectedPlayers[socketId].userName === userName){
+      oldSocketId = socketId;
+    }
+  }
+  // Get the old player object.
+  const player = connectedPlayers[oldSocketId];
+
+  // Create a new entry in the connectedPlayers array using the
+  // information from the old entry.
+  let updatedPlayer = player;
+  // Put the new socket instead of the old one
+  updatedPlayer.socket = newSocket;
+  // Add the updated player to the array
+  connectedPlayers[newSocket.id] = updatedPlayer;
+  // Delete the old entry.
+  connectedPlayers.splice(oldSocketId, 1);
+
+}
 
 // When a client connects to our server.
 io.on('connection', socket => {
@@ -182,77 +227,132 @@ io.on('connection', socket => {
   // Get the cookies from this socket.
   const cookie=socket.handshake.cookies;
 
-
-  connectedPlayers[socket.id] = {};
-  // We can now use the socket in this array to send to this client.
-  connectedPlayers[socket.id].socket = socket;
-  // Get the username from a cookie.
-  connectedPlayers[socket.id].userName = cookie.userName;
-  // Get the sessionID from a cookie.
-  connectedPlayers[socket.id].sessionID = cookie.sessionID;
-  // Assign a playerID to each user.  This will be replaced with session id in the future.
-  // We would need to load that from a cookie.
-  connectedPlayers[socket.id].userID = numPlayers;
+  // Check if the user was previously logged in.
+  if(isUserInPlayers(cookie.userName)){
+    console.log('old user connected! Updating connectedPlayers array!');
+    updateUserSocket(cookie.userName, socket);
+    // If the user was not in game then tell him to wait for an opponent;
+    if(!connectedPlayers[socket.id].gameID){
+      // Find where the player was in playersInQeueu array and update the socket.
+      for(i in playersInQueue){
+        if(playersInQueue[i].userName === cookie.userName){
+          playersInQueue[i].socket = socket;
+          break;
+        }
+      }
+      // Tell the player he is waiting for opponent..
+      socket.emit('waiting');
+    }
+  }
+  else{
+    console.log('new user connected! Inserting him into connectedPlayers array!');
+    // A new user has connected that was not in connectedPlayers array.
+    connectedPlayers[socket.id] = {};
+    // We can now use the socket in this array to send to this client.
+    connectedPlayers[socket.id].socket = socket;
+    // Get the username from a cookie.
+    connectedPlayers[socket.id].userName = cookie.userName;
+    // Add the joining user to the queue,  this makes him available to join games.
+    playersInQueue.push( {'userName': cookie.userName,
+                          'socket': socket});
+    // Tell the socket he has not yet started a game.
+    socket.emit('waiting');
     // Increment the player counter because a new player just connected.
-  numPlayers++;
-
-  // If the number of players is 2 then we can start a new game.
-  if(numPlayers === 2){
-
-    // Tell clients to prep for a new game
-    io.emit('newGame');
-    // Create a new game that the 2 connected players will compete in.  Currently it's only
-    // possible to have 2 players play at once.  An array of games will be better in the future.
-    game1 = new game.Game();
-    // Tell the second player that it is his turn.  (Maybe change to random player later)
-    socket.emit('yourTurn');
-    // Announce the game start.
-    io.emit('announcement', 'We got 2 players, a game will start now! First player is: '+
-            connectedPlayers[socket.id].userName);
-    // Pick a socket that gets to draw first.  It should pick a random socket
-    // but currently it picks the second socket to join the game.
+    numPlayers++;
   }
 
+
+    // If the number of players is 2 then we can start a new game.
+    if(playersInQueue.length > 1){
+      const player1Socket = playersInQueue.pop().socket;
+      const player2Socket = playersInQueue.pop().socket;
+      const player1 = connectedPlayers[player1Socket.id].userName;
+      const player2 = connectedPlayers[player2Socket.id].userName;
+      connectedPlayers[player1Socket.id].gameID = gameID;
+      connectedPlayers[player2Socket.id].gameID = gameID;
+
+      player1Socket.join('game'+gameID);
+      player2Socket.join('game'+gameID);
+
+      const activeGame = {'game': new game.Game(player1, player2),
+                          'player1': player1,
+                          'player2': player2,
+                          'player1Socket': player1Socket,
+                          'player2Socket': player2Socket};
+      activeGames[gameID] = activeGame;
+
+      io.to('game'+gameID).emit('newGame');
+      io.to('game'+gameID).emit('announcement', 'In this game '+player1+
+                                ' and ' + player2 + ' will compete!');
+      io.to('game'+gameID).emit('announcement', player1+' starts!');
+      player1Socket.emit('yourTurn');
+
+      gameID++;
+    }
+
   socket.on('sendTurn', move => {
-    console.log(move.column);
+
+    // Find what game the player is playing in.
+    const gameID = connectedPlayers[socket.id].gameID;
+    const activeGame = activeGames[gameID];
+
+    let enemySocket;
+    // Find the socketID of other player in the game.  This socketID is then used to
+    // send the move to the other player.
+    if(socket.id === activeGame.player1Socket.id){
+        enemySocket = activeGame.player2Socket;
+    }
+    else{
+        enemySocket = activeGame.player1Socket;
+    }
 
     // The variable isWon keeps track of if a player has won yet.  If this turns true then
     // the socket sending the new move is the winner.
-    let isWon = game1.makeMove(move.row, move.column, connectedPlayers[socket.id].userID);
+    let isWon = activeGame.game.makeMove(move.row, move.column, connectedPlayers[socket.id].userName);
+    let draw = false;
+    if(isWon === -1){
+      draw = true;
+      io.to('game'+gameID).emit('announcement', 'There was a draw!');
+    }
     if (isWon) {
       // Let the players know who won,  the players will then clear the board and start a new game
       // when they recieve these messages.
       // (socket.emit broadcasts to the user that played the last move)
       // (socket.broadcast.emit) broadcasts to the losing player.
+      io.to('game'+gameID).emit('newGame');
+      io.to('game'+gameID).emit('announcement', connectedPlayers[socket.id].userName + ' just won!');
       socket.emit('youWon');
-      io.emit('announcement', connectedPlayers[socket.id].userName + ' just won!')
-      socket.broadcast.emit('youLost');
+      enemySocket.emit('yourTurn');
     }
-    else {
+
+    if(!isWon && !draw){
       // No one won so the game continues.
-      socket.broadcast.emit('enemyTurn', move.column);
-      socket.broadcast.emit('yourTurn');
+      enemySocket.emit('enemyTurn', move.column);
+      enemySocket.emit('yourTurn');
     }
   });
 
   // Someone send a new message
   socket.on('userMsg', (msg) => {
-    // Broadcast the message to all other clients
-    io.emit('newMsg', connectedPlayers[socket.id].userName+': '+msg);
+    // Find the game id of the game the socket is in.  We then Broadcast
+    // to that socket.io room.
+    const gameID = connectedPlayers[socket.id].gameID;
+    // Broadcast the message to the other players.
+    io.to('game'+gameID).emit('newMsg', connectedPlayers[socket.id].userName+': '+msg);
   })
 
   // Do something when a client disconnects
   socket.on('disconnect', () => {
     console.log('A user disconnected');
 
-    // save the userinfo to database.
+
 
 
 
 
     numPlayers--;
     // Announce other players that a player has disconnected
-    io.emit('announcement', connectedPlayers[socket.id].userName+' disconnected.');
+    //io.emit('announcement', connectedPlayers[socket.id].userName+' disconnected.');
   })
 })
 

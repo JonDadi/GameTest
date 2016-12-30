@@ -11,7 +11,9 @@ const Main = (() => {
     let coinsInColumn = [];
     // Variable used to keep track of if it's your turn or not.
     let yourTurn = false;
-
+    const textStyle = {fontSize: '36px',
+                       fill : '#000000'};
+    const waitingText = new PIXI.Text('Waiting for an opponent!', textStyle)
 
     const socket = io();
     const btnSubmit = document.getElementById('btnSubmit');
@@ -19,8 +21,11 @@ const Main = (() => {
     const msgBox = document.getElementById('msgBox');
     const wordToDraw = document.getElementById('word');
     const canvasWrapper = document.getElementById('canvasWrapper');
+    const boardHeight = 700;
+    const boardWidth = 700;
     // The PIXI renderer.
-    let renderer = PIXI.autoDetectRenderer(700, 700);
+    let renderer = PIXI.autoDetectRenderer(boardHeight, boardWidth);
+    renderer.backgroundColor = 0x696969;
     // Append the canvas element to the canvas wrapper.  The pixie library creates
     // the canvas element for us.  The canvas element will from here on be
     // referred to as renderer.view
@@ -32,6 +37,7 @@ const Main = (() => {
     // ########### SOCKET FUNCTIONS ##############
     socket.on('newGame', () => {
       newGame();
+      drawGrid();
     });
 
     socket.on('enemyTurn', column => {
@@ -41,19 +47,24 @@ const Main = (() => {
       renderer.render(stage);
       });
 
-    socket.on('yourTurn', () => {
-      yourTurn = true;
-    });
-
     socket.on('youWon', ()  => {
-        newGame();
+        yourTurn = false;
     });
 
     socket.on('youLost', () => {
-        newGame();
         yourTurn = true;
     })
 
+    socket.on('yourTurn', () => {
+        yourTurn = true;
+    })
+
+    socket.on('waiting', () => {
+      waitingText.x = 150;
+      waitingText.y = 350;
+      stage.addChild(waitingText);
+      renderer.render(stage);
+    })
 
     // ######### EVENT FUNCTIONS ############
     renderer.view.addEventListener("mousedown", e => {
@@ -87,6 +98,27 @@ const Main = (() => {
 
 
     // ######### GAME FUNCTIONS #########
+    // Draws the blue grid on the board.
+    function drawGrid(){
+      const lineWidth = Math.round(boardWidth / 35);
+        for( let i = 0; i<8; i++){
+          line = new PIXI.Graphics();
+          line.lineStyle(lineWidth, 0x0000FF);
+          line.moveTo(i*100, 0);
+          line.lineTo(i*100, boardWidth);
+          stage.addChild(line);
+        }
+        for(let j = 0; j<8; j++){
+          line = new PIXI.Graphics();
+          line.lineStyle(lineWidth, 0x0000FF);
+          line.moveTo(0, j*100);
+          line.lineTo(boardHeight, j*100);
+          stage.addChild(line);
+        }
+        renderer.render(stage);
+    }
+
+
 
     // xPos is the position of the mouse click.
     // returns the column that the mouse clicked on.
@@ -120,7 +152,7 @@ const Main = (() => {
       circle.drawCircle(0,0,32);
       circle.endFill();
       circle.x = (x*100)+50;
-      circle.y = 640-(coinsInColumn[x]*80);
+      circle.y = 650-(coinsInColumn[x]*100);
       return circle;
     }
 
