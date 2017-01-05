@@ -25,14 +25,18 @@ Game.prototype.checkIfVictory = function(){
   if(this.numMoves > 6){
     // Check if there are 4 in a row in any column or row.
     for(let i = 0; i < 7; i++) {
-      for(let j = 0; j < 3; j++) {
-        // Check if there are 5 back to back coins in a row
-        if(b[i][j] === b[i][j+1] && b[i][j+1] === b[i][j+2] && b[i][j+2] === b[i][j+3] && b[i][j] !== 0) {
-            return true;
-
+      for(let j = 0; j < 4; j++) {
+        // Check if there are 4 back to back coins in a row
+        if(i < 6) {
+          if(b[i][j] === b[i][j+1] && b[i][j+1] === b[i][j+2] && b[i][j+2] === b[i][j+3] && b[i][j] !== 0) {
+              return true;
         }
-        if(b[j][i] === b[j+1][i] && b[j+1][i] === b[j+2][i] && b[j+2][i] === b[j+3][i] && b[j][i] !== 0) {
-            return true;
+      }
+      // Check if there are 4 back to back coins in a column
+        if(j >= 0 && j < 3) {
+          if(b[j][i] === b[j+1][i] && b[j+1][i] === b[j+2][i] && b[j+2][i] === b[j+3][i] && b[j][i] !== 0) {
+              return true;
+          }
         }
       }
     }
@@ -76,12 +80,14 @@ Game.prototype.makeMove = function(row, column, player) {
   // Return -1 if there is a draw
   if(this.numMoves === this.gameBoard[0].length * this.gameBoard[0].length) return -1;
 
+  const gameBoard = this.gameBoard;
   //console.log(this.gameBoard);
   const isWon = this.checkIfVictory();
   if(isWon){
     this.setUpBoard();
   }
-  return isWon;
+  const result = [isWon, gameBoard];
+  return result;
 }
 
 module.exports = { Game };

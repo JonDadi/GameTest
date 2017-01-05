@@ -182,7 +182,6 @@ passport.use('local-signin', new LocalStrategy(
 const connectedPlayers = [];
 const playersInQueue = [];
 const activeGames = [];
-const wordToGuess = 'penus';
 let gameID = 0;
 let numPlayers = 0;
 let activePlayer = '0';
@@ -278,7 +277,14 @@ io.on('connection', socket => {
                           'player1': player1,
                           'player2': player2,
                           'player1Socket': player1Socket,
-                          'player2Socket': player2Socket};
+                          'player2Socket': player2Socket,
+                          'dbId': null};
+
+      db.createMatch(player1, player2, null, activeGame.game.gameBoard) // (player1, player2, winner, grid)
+      .then((result) => {
+        activeGame.dbId = result[0].id; // get the db ID of the match
+      });
+
       activeGames[gameID] = activeGame;
 
       io.to('game'+gameID).emit('newGame');
@@ -309,23 +315,34 @@ io.on('connection', socket => {
     // The variable isWon keeps track of if a player has won yet.  If this turns true then
     // the socket sending the new move is the winner.
     let isWon = activeGame.game.makeMove(move.row, move.column, connectedPlayers[socket.id].userName);
+    db.updateMatchBoard(activeGame.game.gameBoard, activeGame.dbId)
+    .then((result) => {
+      console.log("Board updated");
+    });
+
     let draw = false;
     if(isWon === -1){
       draw = true;
       io.to('game'+gameID).emit('announcement', 'There was a draw!');
     }
-    if (isWon) {
+    // if an array of length 2 was returned from the makeMove function call above and
+    // a winning condition was fulfilled
+    if (isWon.length > 1 && isWon[0]) {
+      db.updateMatchWinner(connectedPlayers[socket.id].userName, isWon[1], activeGame.dbId)
+      .then((result) => {
+        console.log("DB has been updated with name of winner: "+connectedPlayers[socket.id].userName);
+      });
       // Let the players know who won,  the players will then clear the board and start a new game
       // when they recieve these messages.
       // (socket.emit broadcasts to the user that played the last move)
       // (socket.broadcast.emit) broadcasts to the losing player.
-      io.to('game'+gameID).emit('newGame');
+      io.to('game'+gameID).emit('newGame'); 
       io.to('game'+gameID).emit('announcement', connectedPlayers[socket.id].userName + ' just won!');
       socket.emit('youWon');
       enemySocket.emit('yourTurn');
     }
 
-    if(!isWon && !draw){
+    if(!isWon[0] && !draw){
       // No one won so the game continues.
       enemySocket.emit('enemyTurn', move.column);
       enemySocket.emit('yourTurn');

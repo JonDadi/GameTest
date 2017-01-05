@@ -57,7 +57,8 @@ function createTables() {
 // Inserts a new user.
 // returns a promise
 function insertUser(user, pass, e, date) {
-  return db.none(`INSERT INTO player(username, password, email, signupdate) VALUES($1, $2, $3, $4)`, [user, pass, e, date]);
+  return db.none(`INSERT INTO player(username, password, email, signupdate) VALUES($1, $2, $3, $4)`,
+  [user, pass, e, date]);
 }
 
 // Finds a single user by username
@@ -66,8 +67,39 @@ function findOne(name) {
   return db.any(`SELECT * FROM player WHERE username = $1`, [name]);
 }
 
+function getUserId(name) {
+  return db.any(`SELECT id FROM player WHERE username = $1`, [name]);
+}
+
+function createMatch(username1, username2, winnerPerson, gameGrid) {
+  return db.any(`INSERT INTO match(player1, player2, winner, grid) VALUES($1, $2, $3, $4) RETURNING id` ,
+  [username1, username2, winnerPerson, gameGrid]);
+}
+
+function updateMatchPlayer1(username, matchid) {
+  return db.any(`UPDATE match SET player1 = $1 WHERE id = $2`, [username, matchid]);
+}
+
+function updateMatchPlayer2(username, matchid) {
+  return db.none(`UPDATE match SET player2 = $1 WHERE id = $2`, [username, matchid]);
+}
+
+function updateMatchWinner(username, board, matchid) {
+  return db.none(`UPDATE match SET winner = $1, grid = $2 WHERE id = $3`, [username, board, matchid]);
+}
+
+function updateMatchBoard(board, matchid) {
+  return db.none(`UPDATE match SET grid = $1 WHERE id = $2`, [board, matchid]);
+}
+
 module.exports = {
   createTables,
   findOne,
-  insertUser
+  insertUser,
+  getUserId,
+  createMatch,
+  updateMatchPlayer1,
+  updateMatchPlayer2,
+  updateMatchWinner,
+  updateMatchBoard
 };
