@@ -216,8 +216,20 @@ function updateUserSocket(userName, newSocket){
   connectedPlayers[newSocket.id] = updatedPlayer;
   // Delete the old entry.
   connectedPlayers.splice(oldSocketId, 1);
+  console.log(connectedPlayers[oldSocketId]);
 
 }
+
+// Returns an array of usersNames that are currently on the site right now.
+function getCurrentlyOnlinePlayers(){
+  let onlineUsers = [];
+  for(socketId in connectedPlayers){
+    if(connectedPlayers[socketId].isOnline)
+      onlineUsers.push(connectedPlayers[socketId].userName);
+  }
+  return onlineUsers;
+}
+
 
 // When a client connects to our server.
 io.on('connection', socket => {
@@ -256,11 +268,14 @@ io.on('connection', socket => {
                           'socket': socket});
     // Tell the socket he has not yet started a game.
     socket.emit('waiting');
-    // Increment the player counter because a new player just connected.
-    numPlayers++;
   }
 
-
+  // Store if the user is currently online on the site right now.
+  connectedPlayers[socket.id].isOnline = true;
+  // Send the currently online users to all sockets.
+  io.emit('updatePlayerList', getCurrentlyOnlinePlayers());
+  console.log(getCurrentlyOnlinePlayers());
+  console.log(connectedPlayers.length);
     // If the number of players is 2 then we can start a new game.
     if(playersInQueue.length > 1){
       const player1Socket = playersInQueue.pop().socket;
@@ -361,15 +376,9 @@ io.on('connection', socket => {
   // Do something when a client disconnects
   socket.on('disconnect', () => {
     console.log('A user disconnected');
-
-
-
-
-
-
-    numPlayers--;
-    // Announce other players that a player has disconnected
-    //io.emit('announcement', connectedPlayers[socket.id].userName+' disconnected.');
+    connectedPlayers[socket.id].isOnline = false;
+    // Because a user disconnected we have to update the online players list.
+    io.emit('updatePlayerList', getCurrentlyOnlinePlayers());
   })
 })
 
