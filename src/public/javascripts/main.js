@@ -21,6 +21,7 @@ const Main = (() => {
     const msgBox = document.getElementById('msgBox');
     const wordToDraw = document.getElementById('word');
     const canvasWrapper = document.getElementById('canvasWrapper');
+    const onlinePlayersList = document.getElementById('onlineUsers');
     const boardHeight = 600;
     const boardWidth = 700;
     // The PIXI renderer.
@@ -57,6 +58,19 @@ const Main = (() => {
 
     socket.on('yourTurn', () => {
         yourTurn = true;
+    })
+
+    socket.on('updatePlayerList', onlinePlayers => {
+      // Clear the previous list.
+      onlinePlayersList.innerHTML = '';
+      // Insert each userName into the list.
+      for(let i = 0; i < onlinePlayers.length; i++){
+        const playerItem = document.createElement('li');
+        const userName = document.createTextNode(onlinePlayers[i]);
+
+        playerItem.appendChild(userName);
+        onlinePlayersList.appendChild(playerItem);
+      }
     })
 
     socket.on('waiting', () => {
