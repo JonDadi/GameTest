@@ -21,10 +21,10 @@ const Main = (() => {
     const msgBox = document.getElementById('msgBox');
     const wordToDraw = document.getElementById('word');
     const canvasWrapper = document.getElementById('canvasWrapper');
-    const boardHeight = 700;
+    const boardHeight = 600;
     const boardWidth = 700;
     // The PIXI renderer.
-    let renderer = PIXI.autoDetectRenderer(boardHeight, boardWidth);
+    let renderer = PIXI.autoDetectRenderer(boardWidth, boardHeight);
     renderer.backgroundColor = 0x696969;
     // Append the canvas element to the canvas wrapper.  The pixie library creates
     // the canvas element for us.  The canvas element will from here on be
@@ -72,8 +72,8 @@ const Main = (() => {
         const xPos = e.clientX - renderer.view.offsetLeft;
         // Decide which of the seven columns the user clicked on.
         const column = getColumn(xPos);
-        // Only create a coin when there are less than 7 in that column
-        if(coinsInColumn[column] < 7){
+        // Only create a coin when there are less than 6 in that column
+        if(coinsInColumn[column] < 6){
           // Construct a move objects that tells us what row and column
           // the coin should be places in.
           const move = {'row' : coinsInColumn[column],
@@ -105,14 +105,14 @@ const Main = (() => {
           line = new PIXI.Graphics();
           line.lineStyle(lineWidth, 0x0000FF);
           line.moveTo(i*100, 0);
-          line.lineTo(i*100, boardWidth);
+          line.lineTo(i*100, boardHeight);
           stage.addChild(line);
         }
         for(let j = 0; j<8; j++){
           line = new PIXI.Graphics();
           line.lineStyle(lineWidth, 0x0000FF);
           line.moveTo(0, j*100);
-          line.lineTo(boardHeight, j*100);
+          line.lineTo(boardWidth, j*100);
           stage.addChild(line);
         }
         renderer.render(stage);
@@ -152,7 +152,7 @@ const Main = (() => {
       circle.drawCircle(0,0,32);
       circle.endFill();
       circle.x = (x*100)+50;
-      circle.y = 650-(coinsInColumn[x]*100);
+      circle.y = 550-(coinsInColumn[x]*100);
       return circle;
     }
 
