@@ -8,7 +8,7 @@ const playersInQueue = [];
 // If there is no user with that socket that is online then return null;
 function getUserNameBySocketID( socketID ){
   for( user in connectedPlayers ) {
-    if(connectedPlayers[user].socket.socketId === socketID &&
+    if(connectedPlayers[user].socket.id === socketID &&
        connectedPlayers[user].isOnline) {
       return user;
     }
@@ -39,15 +39,22 @@ function checkIfPlayerExists( userName ){
 
 // Inserts the player into the connectedPlayers array.
 function setPlayerOnline( userName, socket){
-    // Clear the old data and put some new awesome data into the array.
-    connectedPlayers[userName] = {};
+    // Check if the player has been initialized before,  if not then
+    // initialize the player.
+    if(!connectedPlayers[userName]){
+      connectedPlayers[userName] = {};
+    }
     connectedPlayers[userName].socket = socket;
     connectedPlayers[userName].isOnline = true;
+
+    console.log(getUserNameBySocketID(socket.id));
 }
 
 // TO DO:
 // Set a player to offline if he disconnects from the site.
-function setPlayerOffline( userName ) {
+function setPlayerOffline( socketID ) {
+  const userName = getUserNameBySocketID(socketID);
+  console.log("user:"+userName);
   connectedPlayers[userName].isOnline = false;
 }
 // Sets a player into the queue,  by beying in the queue he is
@@ -63,13 +70,32 @@ function getPlayerFromQueue(){
           'socket': socket};
 }
 
+function getNumPlayersInQueue(){
+  return playersInQueue.length;
+}
+
+// set the gameID that the player is playing in.
+function playerJoinGame( userName, gameID ){
+  connectedPlayers[userName].inGame = gameID;
+}
+
+// Delete the current gameID.
+function playerLeaveGame( userName ) {
+  connectedPlayers[userName].inGame = null;
+}
+
+function getPlayerGameID( socketID ) {
+  const userName = getUserNameBySocketID( socketID );
+  return connectedPlayers[userName].inGame;
+}
+
 
 // Get all currently online players
 // returns an array of usernames
 function getOnlinePlayers() {
   const onlinePlayers = [];
   for( userName in connectedPlayers ) {
-    if(connectedPlayers[userName].isOnline){
+    if(connectedPlayers[userName].isOnline && !connectedPlayers[userName].inGame){
       onlinePlayers.push(userName);
     }
   }
@@ -79,3 +105,12 @@ function getOnlinePlayers() {
 module.exports = {
   setPlayerOnline,
   setPlayerOffline,
+  setPlayerIntoQueue,
+  getOnlinePlayers,
+  getPlayerFromQueue,
+  getUserNameBySocketID,
+  getPlayerGameID,
+  playerJoinGame,
+  playerLeaveGame,
+  getNumPlayersInQueue,
+}

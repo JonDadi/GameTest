@@ -17,6 +17,7 @@ const Main = (() => {
 
     const socket = io();
     const btnSubmit = document.getElementById('btnSubmit');
+    const btnEnterQueue = document.getElementById('btnEnterQueue');
     const userInput = document.getElementById('msg');
     const msgBox = document.getElementById('msgBox');
     const wordToDraw = document.getElementById('word');
@@ -61,6 +62,7 @@ const Main = (() => {
     })
 
     socket.on('updatePlayerList', onlinePlayers => {
+
       // Clear the previous list.
       onlinePlayersList.innerHTML = '';
       // Insert each userName into the list.
@@ -187,7 +189,10 @@ const Main = (() => {
       chatItem.appendChild(chatText);
       msgBox.appendChild(chatItem);
     }
-
+    btnEnterQueue.addEventListener('click', () => {
+      socket.emit('enterQueue');
+      writeInChat('You are now searching for an opponent!', true);
+    });
     btnSubmit.addEventListener('click', () => {
       socket.emit('userMsg', userInput.value);
       userInput.value = '';
