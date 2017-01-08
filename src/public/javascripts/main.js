@@ -84,16 +84,36 @@ const Main = (() => {
         yourTurn = true;
     })
 
+    socket.on('challenged', challenger => {
+      writeInChat('You have been challenged by '+challenger, true);
+      const acceptButton = document.createElement('button');
+      const buttonText = document.createTextNode('Accept challenge from '+challenger);
+      acceptButton.appendChild(buttonText);
+      msgBox.appendChild(acceptButton);
+      acceptButton.addEventListener('click', () => {
+        socket.emit('acceptChallenge', challenger);
+      })
+    });
+
     socket.on('updatePlayerList', onlinePlayers => {
 
       // Clear the previous list.
       onlinePlayersList.innerHTML = '';
       // Insert each userName into the list.
       for(let i = 0; i < onlinePlayers.length; i++){
+        const challengeButton = document.createElement('button');
+        const buttonText = document.createTextNode('Challenge');
         const playerItem = document.createElement('li');
         const userName = document.createTextNode(onlinePlayers[i]);
 
+        challengeButton.addEventListener('click', () => {
+          socket.emit('challenge', onlinePlayers[i]);
+          console.log(onlinePlayers[i]);
+        });
+
+        challengeButton.appendChild(buttonText);
         playerItem.appendChild(userName);
+        playerItem.appendChild(challengeButton);
         onlinePlayersList.appendChild(playerItem);
       }
     })
