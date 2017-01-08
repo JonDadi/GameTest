@@ -44,6 +44,7 @@ const Main = (() => {
     });
 
     socket.on('displayScores', (player1, player2, score1, score2) => {
+      console.log('inní displayScores');
       const node1 = document.createElement('p');
       const node2 = document.createElement('p');
       const scorePlayer1 = document.createTextNode(`${player1} has won ${score1}`);
@@ -51,6 +52,15 @@ const Main = (() => {
 
       node1.appendChild(scorePlayer1);
       node2.appendChild(scorePlayer2);
+
+      // if a new game is started again right away between the same 2 players,
+      // the previous score elements are erased and replaced with updated ones.
+      if(scores.children.length > 0){
+        while (scores.firstChild) {
+          scores.removeChild(scores.firstChild);
+        }
+      }
+
       scores.appendChild(node1);
       scores.appendChild(node2);
     });
@@ -129,6 +139,7 @@ const Main = (() => {
     // ######### GAME FUNCTIONS #########
     // Draws the blue grid on the board.
     function drawGrid(){
+      console.log('attempting to draw grid');
       const lineWidth = Math.round(boardWidth / 35);
         for( let i = 0; i<8; i++){
           line = new PIXI.Graphics();

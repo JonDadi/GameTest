@@ -221,19 +221,22 @@ io.on('connection', socket => {
 
       db.createMatch(player1.userName, player2.userName, null, activeGame.game.gameBoard) // (player1, player2, winner, grid)
       .then((result) => {
+        console.log('match created in db');
         activeGame.dbId = result[0].id; // get the db ID of the match
       });
+
+      activeGames[gameID] = activeGame;
 
       let score1 = 0;
       let score2 = 0;
       // Have to have this whole thing under '.then' because of the promise behavior. If the 'emits'
       // are outside of the promise, score1 and score2 won't get updated and will always remain 0
-      db.getScores(player1, player2)
+      db.getScores(player1.userName, player2.userName)
       .then((result) => {
         score1 = result[0].winsplayer1;
         score2 = result[0].winsplayer2;
-        io.to('game'+gameID).emit('displayScores', player1, player2, score1, score2);
 
+        io.to('game'+gameID).emit('displayScores', player1.userName, player2.userName, score1, score2);
         io.to('game'+gameID).emit('newGame');
         io.to('game'+gameID).emit('announcement', 'In this game '+player1+
                                   ' and ' + player2 + ' will compete!');
@@ -244,8 +247,6 @@ io.on('connection', socket => {
         gameID++;
       });
     }
-
-
   });
 
   socket.on('sendTurn', move => {
@@ -277,6 +278,7 @@ io.on('connection', socket => {
     if(isWon === -1){
       draw = true;
       io.to('game'+gameID).emit('announcement', 'There was a draw!');
+      enemySocket.emit('yourTurn');
     }
     // if an array of length 2 was returned from the makeMove function call above and
     // a winning condition was fulfilled then we update db accordingly
@@ -284,16 +286,19 @@ io.on('connection', socket => {
       db.updateMatchWinner(currentPlayerUserName, isWon[1], activeGame.dbId)
       .then((result) => {
         console.log("DB has been updated with name of winner: "+ currentPlayerUserName);
+
+        // Let the players know who won,  the players will then clear the board and start a new game
+        // when they recieve these messages.
+        // (socket.emit broadcasts to the user that played the last move)
+        // (socket.broadcast.emit) broadcasts to the losing player.
+        // TODO: Game starts right away, but we should let them choose whether to start anew or not.
+        //       That should make sure a new game is truly started, that is, a new game is created in db.
+        io.to('game'+gameID).emit('newGame');
+        io.to('game'+gameID).emit('announcement', currentPlayerUserName + ' just won!');
+        socket.emit('youWon');
+        enemySocket.emit('yourTurn');
       });
-      // Let the players know who won,  the players will then clear the board and start a new game
-      // when they recieve these messages.
-      // (socket.emit broadcasts to the user that played the last move)
-      // (socket.broadcast.emit) broadcasts to the losing player.
-      io.to('game'+gameID).emit('newGame');
-      io.to('game'+gameID).emit('announcement', connectedPlayers[socket.id].userName + ' just won!');
-      io.to('game'+gameID).emit('announcement', currentPlayerUserName + ' just won!');
-      socket.emit('youWon');
-      enemySocket.emit('yourTurn');
+
     }
 
     if(!isWon[0] && !draw){

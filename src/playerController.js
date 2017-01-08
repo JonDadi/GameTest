@@ -50,14 +50,13 @@ function setPlayerOnline( userName, socket){
     console.log(getUserNameBySocketID(socket.id));
 }
 
-// TO DO:
-// Set a player to offline if he disconnects from the site.
+// TODO: Set a player to offline if he disconnects from the site.
 function setPlayerOffline( socketID ) {
   const userName = getUserNameBySocketID(socketID);
   console.log("user:"+userName);
   connectedPlayers[userName].isOnline = false;
 }
-// Sets a player into the queue,  by beying in the queue he is
+// Sets a player into the queue, by being in the queue he is
 // waiting for a game.
 function setPlayerIntoQueue( userName ) {
   playersInQueue.push(userName);
