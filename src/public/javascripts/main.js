@@ -22,6 +22,7 @@ const Main = (() => {
     const wordToDraw = document.getElementById('word');
     const canvasWrapper = document.getElementById('canvasWrapper');
     const onlinePlayersList = document.getElementById('onlineUsers');
+    const scores = document.getElementById('scores');
     const boardHeight = 600;
     const boardWidth = 700;
     // The PIXI renderer.
@@ -39,6 +40,18 @@ const Main = (() => {
     socket.on('newGame', () => {
       newGame();
       drawGrid();
+    });
+
+    socket.on('displayScores', (player1, player2, score1, score2) => {
+      const node1 = document.createElement('p');
+      const node2 = document.createElement('p');
+      const scorePlayer1 = document.createTextNode(`${player1} has won ${score1}`);
+      const scorePlayer2 = document.createTextNode(`${player2} has won ${score2} `);
+
+      node1.appendChild(scorePlayer1);
+      node2.appendChild(scorePlayer2);
+      scores.appendChild(node1);
+      scores.appendChild(node2);
     });
 
     socket.on('enemyTurn', column => {
@@ -178,7 +191,7 @@ const Main = (() => {
       writeInChat(msg, false);
     });
 
-    function  writeInChat(message, isImportant){
+    function writeInChat(message, isImportant){
       const chatItem = document.createElement('li');
       const chatText = document.createTextNode(message);
       if(isImportant){

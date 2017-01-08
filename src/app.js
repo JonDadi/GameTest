@@ -285,6 +285,8 @@ io.on('connection', socket => {
       connectedPlayers[player1Socket.id].gameID = gameID;
       connectedPlayers[player2Socket.id].gameID = gameID;
 
+
+
       player1Socket.join('game'+gameID);
       player2Socket.join('game'+gameID);
 
@@ -300,15 +302,25 @@ io.on('connection', socket => {
         activeGame.dbId = result[0].id; // get the db ID of the match
       });
 
-      activeGames[gameID] = activeGame;
+      let score1 = 0;
+      let score2 = 0;
+      // Have to have this whole thing under '.then' because of the promise behavior. If the 'emits'
+      // are outside of the promise, score1 and score2 won't get updated and will always remain 0
+      db.getScores(player1, player2)
+      .then((result) => {
+        score1 = result[0].winsplayer1;
+        score2 = result[0].winsplayer2;
+        io.to('game'+gameID).emit('displayScores', player1, player2, score1, score2);
 
-      io.to('game'+gameID).emit('newGame');
-      io.to('game'+gameID).emit('announcement', 'In this game '+player1+
-                                ' and ' + player2 + ' will compete!');
-      io.to('game'+gameID).emit('announcement', player1+' starts!');
-      player1Socket.emit('yourTurn');
+        io.to('game'+gameID).emit('newGame');
+        io.to('game'+gameID).emit('announcement', 'In this game '+player1+
+                                  ' and ' + player2 + ' will compete!');
+        io.to('game'+gameID).emit('announcement', player1+' starts!');
 
-      gameID++;
+        player1Socket.emit('yourTurn');
+
+        gameID++;
+      });
     }
 
   socket.on('sendTurn', move => {
@@ -341,7 +353,7 @@ io.on('connection', socket => {
       io.to('game'+gameID).emit('announcement', 'There was a draw!');
     }
     // if an array of length 2 was returned from the makeMove function call above and
-    // a winning condition was fulfilled
+    // a winning condition was fulfilled then we update db accordingly
     if (isWon.length > 1 && isWon[0]) {
       db.updateMatchWinner(connectedPlayers[socket.id].userName, isWon[1], activeGame.dbId)
       .then((result) => {
@@ -351,7 +363,7 @@ io.on('connection', socket => {
       // when they recieve these messages.
       // (socket.emit broadcasts to the user that played the last move)
       // (socket.broadcast.emit) broadcasts to the losing player.
-      io.to('game'+gameID).emit('newGame'); 
+      io.to('game'+gameID).emit('newGame');
       io.to('game'+gameID).emit('announcement', connectedPlayers[socket.id].userName + ' just won!');
       socket.emit('youWon');
       enemySocket.emit('yourTurn');

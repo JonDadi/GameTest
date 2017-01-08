@@ -92,6 +92,20 @@ function updateMatchBoard(board, matchid) {
   return db.none(`UPDATE match SET grid = $1 WHERE id = $2`, [board, matchid]);
 }
 
+function getScores(user1, user2) {
+  // This works but could probably be done more efficiently, like maybe creating an sql view which
+  // holds the WHERE ((player1 = 'gusti' AND player2 = 'gusti2') OR (player1 = 'gusti2' AND player2 = 'gusti')) data
+  return db.any(`SELECT winsplayer1, winsplayer2
+                 FROM (SELECT COUNT(*) as winsplayer1
+	                    FROM match
+	                    WHERE ((player1 = $1 AND player2 = $2) OR (player1 = $2 AND player2 = $1))
+                    	AND (winner = $1)) as wins1,
+                    	(SELECT COUNT(*) as winsplayer2
+                    	FROM match
+                    	WHERE ((player1 = $1 AND player2 = $2) OR (player1 = $2 AND player2 = $1))
+                    	AND (winner = $2)) as wins2`, [user1, user2]);
+}
+
 module.exports = {
   createTables,
   findOne,
@@ -101,5 +115,6 @@ module.exports = {
   updateMatchPlayer1,
   updateMatchPlayer2,
   updateMatchWinner,
-  updateMatchBoard
+  updateMatchBoard,
+  getScores
 };
