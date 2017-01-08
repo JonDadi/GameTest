@@ -253,7 +253,6 @@ io.on('connection', socket => {
 
     // Find what game the player is playing in.
     const gameID = playerController.getPlayerGameID(socket.id);
-    console.log(gameID);
     const activeGame = activeGames[gameID];
     let enemySocket;
     // Find the socketID of other player in the game.  This socketID is then used to
@@ -299,6 +298,14 @@ io.on('connection', socket => {
         enemySocket.emit('yourTurn');
       });
 
+      // Let the players know who won,  the players will then clear the board and start a new game
+      // when they recieve these messages.
+      // (socket.emit broadcasts to the user that played the last move)
+      // (socket.broadcast.emit) broadcasts to the losing player.
+      io.to('game'+gameID).emit('newGame');
+      io.to('game'+gameID).emit('announcement', currentPlayerUserName + ' just won!');
+      socket.emit('youWon');
+      enemySocket.emit('yourTurn');
     }
 
     if(!isWon[0] && !draw){
@@ -307,6 +314,51 @@ io.on('connection', socket => {
       enemySocket.emit('yourTurn');
     }
   });
+  socket.on('challenge', challenged => {
+      const challenger = playerController.getUserNameBySocketID( socket.id );
+      console.log(challenged);
+      const challengedSocket = playerController.getSocketByUserName( challenged );
+      socket.emit('announcement', 'You have challanged '+challenged+' to a match!');
+      challengedSocket.emit('challenged', challenger);
+
+    });
+
+  socket.on('acceptChallenge', challenger => {
+    const player1 = {'userName': playerController.getUserNameBySocketID( socket.id ),
+                     'socket': socket};
+    const player2 = {'userName': challenger,
+                     'socket': playerController.getSocketByUserName( challenger )};
+    const player1Socket = player1.socket;
+    const player2Socket = player2.socket;
+
+    // Tell the playerController that these players will join a game.
+    playerController.playerJoinGame(player1.userName, gameID);
+    playerController.playerJoinGame(player2.userName, gameID);
+    // Make the player sockets join a room so they can talk in private.
+    player1Socket.join('game'+gameID);
+    player2Socket.join('game'+gameID);
+
+    const activeGame = {'game': new game.Game(player1.userName, player2.userName),
+                        'player1': player1,
+                        'player2': player2,
+                        'dbId': null};
+
+    db.createMatch(player1.userName, player2.userName, null, activeGame.game.gameBoard) // (player1, player2, winner, grid)
+    .then((result) => {
+      activeGame.dbId = result[0].id; // get the db ID of the match
+    });
+
+    activeGames[gameID] = activeGame;
+
+    io.to('game'+gameID).emit('newGame');
+    io.to('game'+gameID).emit('announcement', 'In this game '+player1.userName+
+                              ' and ' + player2.userName + ' will compete!');
+    io.to('game'+gameID).emit('announcement', player1.userName+' starts!');
+    player1.socket.emit('yourTurn');
+    // Increment the gameID so the next game will have a different gameID
+    gameID++;
+  });
+
 
   // Someone send a new message
   socket.on('userMsg', (msg) => {
@@ -326,12 +378,5 @@ io.on('connection', socket => {
     io.emit('updatePlayerList', playerController.getOnlinePlayers());
   })
 })
-
-function joinTwoRandomsInGame(){
-
-
-
-}
-
 
 module.exports = app;

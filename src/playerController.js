@@ -46,14 +46,11 @@ function setPlayerOnline( userName, socket){
     }
     connectedPlayers[userName].socket = socket;
     connectedPlayers[userName].isOnline = true;
-
-    console.log(getUserNameBySocketID(socket.id));
 }
 
 // TODO: Set a player to offline if he disconnects from the site.
 function setPlayerOffline( socketID ) {
   const userName = getUserNameBySocketID(socketID);
-  console.log("user:"+userName);
   connectedPlayers[userName].isOnline = false;
 }
 // Sets a player into the queue, by being in the queue he is
@@ -112,4 +109,5 @@ module.exports = {
   playerJoinGame,
   playerLeaveGame,
   getNumPlayersInQueue,
+  getSocketByUserName,
 }
