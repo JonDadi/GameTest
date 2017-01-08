@@ -252,7 +252,6 @@ io.on('connection', socket => {
 
     // Find what game the player is playing in.
     const gameID = playerController.getPlayerGameID(socket.id);
-    console.log(gameID);
     const activeGame = activeGames[gameID];
     let enemySocket;
     // Find the socketID of other player in the game.  This socketID is then used to
@@ -290,7 +289,6 @@ io.on('connection', socket => {
       // (socket.emit broadcasts to the user that played the last move)
       // (socket.broadcast.emit) broadcasts to the losing player.
       io.to('game'+gameID).emit('newGame');
-      io.to('game'+gameID).emit('announcement', connectedPlayers[socket.id].userName + ' just won!');
       io.to('game'+gameID).emit('announcement', currentPlayerUserName + ' just won!');
       socket.emit('youWon');
       enemySocket.emit('yourTurn');
@@ -302,15 +300,14 @@ io.on('connection', socket => {
       enemySocket.emit('yourTurn');
     }
   });
-
   socket.on('challenge', challenged => {
-    const challenger = playerController.getUserNameBySocketID( socket.id );
-    console.log(challenged);
-    const challengedSocket = playerController.getSocketByUserName( challenged );
-    socket.emit('announcement', 'You have challanged '+challenged+' to a match!');
-    challengedSocket.emit('challenged', challenger);
+      const challenger = playerController.getUserNameBySocketID( socket.id );
+      console.log(challenged);
+      const challengedSocket = playerController.getSocketByUserName( challenged );
+      socket.emit('announcement', 'You have challanged '+challenged+' to a match!');
+      challengedSocket.emit('challenged', challenger);
 
-  });
+    });
 
   socket.on('acceptChallenge', challenger => {
     const player1 = {'userName': playerController.getUserNameBySocketID( socket.id ),
@@ -346,9 +343,8 @@ io.on('connection', socket => {
     player1.socket.emit('yourTurn');
     // Increment the gameID so the next game will have a different gameID
     gameID++;
-
-
   });
+
 
   // Someone send a new message
   socket.on('userMsg', (msg) => {
@@ -356,14 +352,8 @@ io.on('connection', socket => {
     // to that socket.io room.
     const gameID = playerController.getPlayerGameID( socket.id );
     const userName = playerController.getUserNameBySocketID( socket.id );
-    console.log(gameID);
-    if(gameID > -1){
     // Broadcast the message to the other players.
-      io.to('game'+gameID).emit('newMsg', userName +': '+msg);
-    }
-    else{
-      socket.emit('announcement', 'Join a game to talk to other players!');
-    }
+    io.to('game'+gameID).emit('newMsg', userName +': '+msg);
   })
 
   // Do something when a client disconnects
